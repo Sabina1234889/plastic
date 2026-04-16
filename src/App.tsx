@@ -890,24 +890,46 @@ export default function App() {
         const userDoc = await getDoc(userRef);
 
         if (!data.isLogin) {
-          // Sign Up
-          await setDoc(userRef, {
-            uid,
-            name: data.name,
-            email: data.email || '',
-            nid: data.nid,
-            phone: data.phone,
-            balance: 0,
-            totalPlastic: 0,
-            virtualCardNumber: virtualCard,
-            photoURL: null,
-            kycStatus: 'verified',
-            createdAt: serverTimestamp()
+          // Sign Up - Check if identity already exists
+          if (userDoc.exists()) {
+            throw new Error('This phone number is already registered. Please Sign In.');
+          }
+          
+          await runTransaction(db, async (transaction) => {
+            transaction.set(userRef, {
+              uid,
+              name: data.name,
+              email: data.email || '',
+              nid: data.nid,
+              phone: data.phone,
+              password: data.password,
+              balance: 100, // Welcome bonus
+              totalPlastic: 0,
+              virtualCardNumber: virtualCard,
+              photoURL: null,
+              kycStatus: 'verified',
+              createdAt: serverTimestamp()
+            });
+
+            transaction.set(doc(db, 'stats', 'global'), {
+              totalUsers: increment(1)
+            }, { merge: true });
+
+            transaction.set(doc(db, 'leaderboard', uid), {
+              name: data.name,
+              totalPlastic: 0,
+              photoURL: null
+            });
           });
-          toast.success('Identity Created!');
+          
+          toast.success('Identity Created! Welcome Bonus: ৳ 100');
         } else {
           // Sign In
           if (!userDoc.exists()) throw new Error('Identity not found');
+          // Simple password check for demo
+          if (userDoc.data()?.password !== data.password) {
+            throw new Error('Invalid credentials');
+          }
           toast.success('Welcome Back!');
         }
 
@@ -2581,11 +2603,12 @@ function LandingPage({
 function RegistrationForm({ user, onComplete }: { user: FirebaseUser, onComplete: () => void }) {
   const [name, setName] = useState(user.displayName || '');
   const [phone, setPhone] = useState('');
+  const [nid, setNid] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) return toast.error('Please fill all fields');
+    if (!name || !phone || !nid) return toast.error('Please fill all fields');
     
     setSubmitting(true);
     try {
@@ -2597,7 +2620,8 @@ function RegistrationForm({ user, onComplete }: { user: FirebaseUser, onComplete
           name,
           email: user.email || '',
           phone,
-          balance: 0,
+          nid,
+          balance: 100, // Welcome bonus
           totalPlastic: 0,
           virtualCardNumber: virtualCard,
           photoURL: user.photoURL,
@@ -2657,6 +2681,15 @@ function RegistrationForm({ user, onComplete }: { user: FirebaseUser, onComplete
                 onChange={e => setPhone(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500 transition-colors"
                 placeholder="+880 1XXX XXXXXX"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-emerald-400 ml-4">National ID (NID)</label>
+              <input 
+                value={nid}
+                onChange={e => setNid(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                placeholder="10 or 17 digit NID"
               />
             </div>
 
