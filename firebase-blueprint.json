@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and balance information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the user" },
+        "nid": { "type": "string", "description": "National ID number" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "balance": { "type": "number", "description": "Current balance in BDT" },
+        "totalPlastic": { "type": "number", "description": "Total plastic deposited in kg" },
+        "virtualCardNumber": { "type": "string", "description": "Unique virtual card number" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["name", "nid", "phone", "balance", "totalPlastic", "virtualCardNumber", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Deposit or withdrawal record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Reference to the user" },
+        "type": { "type": "string", "enum": ["deposit", "withdraw"], "description": "Type of transaction" },
+        "amount": { "type": "number", "description": "Money amount in BDT" },
+        "weight": { "type": "number", "description": "Plastic weight in kg (for deposits)" },
+        "method": { "type": "string", "description": "Withdrawal method (bKash/Nagad)" },
+        "phone": { "type": "string", "description": "Phone number for withdrawal" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Transaction timestamp" }
+      },
+      "required": ["userId", "type", "amount", "timestamp"]
+    },
+    "GlobalStats": {
+      "title": "GlobalStats",
+      "description": "Aggregated system statistics",
+      "type": "object",
+      "properties": {
+        "totalUsers": { "type": "number" },
+        "totalPlastic": { "type": "number" },
+        "totalMoney": { "type": "number" },
+        "todayPlastic": { "type": "number" },
+        "monthlyPlastic": { "type": "number" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Machine": {
+      "title": "Machine",
+      "description": "A recycling machine location",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "totalCollected": { "type": "number" },
+        "todayCollected": { "type": "number" },
+        "status": { "type": "string", "enum": ["online", "offline", "full"] },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" }
+      },
+      "required": ["name", "location", "totalCollected", "todayCollected", "status", "lat", "lng"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Individual user profiles"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "History of all transactions"
+    },
+    "/stats/global": {
+      "schema": "GlobalStats",
+      "description": "Global system statistics"
+    },
+    "/machines/{machineId}": {
+      "schema": "Machine",
+      "description": "Recycling machine locations"
+    }
+  }
+}

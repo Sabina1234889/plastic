@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - name: string (required)
+    //   - nid: string (required, immutable)
+    //   - phone: string (required)
+    //   - balance: number (required)
+    //   - totalPlastic: number (required)
+    //   - virtualCardNumber: string (required, immutable)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: transactions
+    // Document ID: {transactionId}
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - type: string (required, enum: ['deposit', 'withdraw'])
+    //   - amount: number (required)
+    //   - weight: number (optional, for deposits)
+    //   - method: string (optional, for withdraws)
+    //   - phone: string (optional, for withdraws)
+    //   - timestamp: timestamp (required, immutable)
+    //
+    // Collection: stats
+    // Document ID: global
+    // Fields:
+    //   - totalUsers: number
+    //   - totalPlastic: number
+    //   - totalMoney: number
+    //   - lastUpdated: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "mdanontosunny1068@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'nid', 'phone', 'balance', 'totalPlastic', 'virtualCardNumber', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.nid is string && data.nid.size() >= 10 && data.nid.size() <= 20 &&
+             data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 15 &&
+             data.balance is number &&
+             data.totalPlastic is number &&
+             data.virtualCardNumber is string &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'type', 'amount', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.type in ['deposit', 'withdraw'] &&
+             data.amount is number && data.amount >= 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidStats(data) {
+      return data.totalUsers is number &&
+             data.totalPlastic is number &&
+             data.totalMoney is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) &&
+                       request.resource.data.nid == resource.data.nid &&
+                       request.resource.data.virtualCardNumber == resource.data.virtualCardNumber &&
+                       request.resource.data.createdAt == resource.data.createdAt) || isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /stats/global {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /machines/{machineId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /leaderboard/{userId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}

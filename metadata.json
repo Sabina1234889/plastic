@@ -1,0 +1,6 @@
+{
+  "name": "Plastic Exchange System",
+  "description": "A high-fidelity, futuristic Plastic Exchange System with Cyber-Eco aesthetic, featuring real-time machine tracking, 3D virtual cards, and NFC simulation.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
